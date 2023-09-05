@@ -1,16 +1,27 @@
 import React,{useState, useEffect} from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { toggleMenu } from '../utils/appSlice';
 import { YOUTUBE_SEARCH_API } from '../utils/constants';
+import { cacheResults } from '../utils/searchSlice';
 
 function Head() {
     const [searchQuery, setSearchQuery]=useState("");
     const [suggestion, setSuggestion]=useState([]);
-    const [ showSuggestions , setShowSuggestions]=useState(false);
+    const [showSuggestions , setShowSuggestions]=useState(false);
 
-    //DEBOUNCING
+    const searchCache=useSelector(store=>store.search);
+    const dispatch=useDispatch();
+
+
+    //DEBOUNCING & CACHING
     useEffect(()=>{
-        const timer =setTimeout(() => getSearchSuggestions(), 200);
+        const timer =setTimeout(() => {
+            const cache=searchCache[searchQuery];
+            if(cache)
+                setSuggestion(cache);
+            else
+                getSearchSuggestions()
+        }, 200);
 
         return ()=>{
             clearTimeout(timer);
@@ -21,14 +32,17 @@ function Head() {
         const data= await fetch(YOUTUBE_SEARCH_API+searchQuery)
         const json=await data.json();
         setSuggestion(json[1]);
+
+        dispatch(cacheResults({
+            [searchQuery]:json[1],
+         }));
     }
     
 
-
-    const dispatch=useDispatch();
     const toggleMenuHandler = () =>{
         dispatch(toggleMenu());
     };
+
   return (
     <div className="grid grid-flow-col p-5 m-2 shadow-lg">
         <div className="flex col-span-1 ">
